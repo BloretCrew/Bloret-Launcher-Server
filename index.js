@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 const app = express();
 const port = 4000; // 修改端口号
 
@@ -18,6 +19,8 @@ function writeUserToConfig(user) {
 }
 
 counter = readUserFromConfig();
+
+app.use('/zipdownload', express.static(path.join(__dirname, 'zipdownload')));
 
 app.get('/', (req, res) => {
     counter++;
