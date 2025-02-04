@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const port = 4000; // 修改端口号
+const port = 100; // 修改端口号位置，这里是 100
 
 let counter = 0;
 
