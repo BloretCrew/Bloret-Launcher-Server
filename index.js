@@ -2,8 +2,9 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-
-const port = 2; // 修改端口号位置
+const config = fs.readFileSync('config.ini', 'utf-8');
+const portMatch = config.match(/port=(\d+)/);
+const port = portMatch ? parseInt(portMatch[1], 10) : 2;
 
 let counter = 0;
 
