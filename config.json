@@ -1,0 +1,8 @@
+{
+    "port":2,
+    "loadtime":300,
+    "reload":{
+        "sleepy":"http://pcfs.top:4",
+        "bloret":"http://wiki.bloret.net"
+    }
+}
