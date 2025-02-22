@@ -1,0 +1,21 @@
+{
+    "Bloret": [
+        {
+            "title": "Bloret",
+            "text": "**你这服我感觉不如原神的**",
+            "type": ["官方", "原神"]
+        },
+        {
+            "title": "Bloret Launcher",
+            "text": "[百络谷启动器](http://pcfs.top:2)",
+            "type": ["官方"]
+        }
+    ],
+    "原神": [
+        {
+            "title": "DBQ",
+            "text": "原神\n---\nyuanshen",
+            "type": ["不如原神"]
+        }
+    ]
+}

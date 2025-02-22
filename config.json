@@ -1,7 +1,11 @@
 {
     "port":2,
     "loadtime":300,
-    "reload":{
+    "key":"",
+    "webhook":{
+        "feishu-message":""
+    },
+    "go":{
         "sleepy":"http://pcfs.top:4",
         "bloret":"http://wiki.bloret.net"
     }
