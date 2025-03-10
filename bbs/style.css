@@ -3,13 +3,10 @@ WARNING: 不要使用格式化代码 (本文件内) / DON'T USE CODE FORMATTER H
 */
 
 html {
-    font-size: 25px;
     overflow: auto; /* 添加此行 */
 }
 
-rt {
-    font-size: 0.6em;
-}
+/* Removed empty ruleset for rt */
 
 body, html {
     margin: 0;
@@ -23,9 +20,7 @@ a {
     text-decoration: none;
 }
 
-p {
-    font-size: 18px;
-}
+/* Removed empty ruleset for p */
 
 h1, h2 {
     text-align: left;
@@ -33,24 +28,13 @@ h1, h2 {
 
 h1 {
     margin-bottom: 16px;
-    font-size: 1.25em;
+    /* font-size: 1.25em; */
 }
 
 h2 {
     margin: 16px 0 4px 0;
     font-weight: 500;
-    font-size: 0.9em;
-}
-
-body {
-    /* 背景图设置 */
-    /*background: url('{{ bg }}') no-repeat left center fixed;*/
-    background: url('https://z3.ax1x.com/2021/11/20/IqqQIg.jpg') no-repeat 25% center fixed;
-    background-size: cover;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #ddd;
+    /* font-size: 0.9em; */
 }
 
 hr {
@@ -107,12 +91,12 @@ hr {
 
 .setting-card h3 {
     font-weight: normal;
-    font-size: 18px;
+    /* font-size: 18px; */
 }
 
 .setting-card .left a, .setting-card .left p {
     color: rgba(0, 0, 0, 0.6);
-    font-size: 16px;
+    /* font-size: 16px; */
 }
 
 .setting-card .right {
@@ -128,7 +112,7 @@ hr {
     color: #005fb8;
     text-decoration: none;
     white-space: nowrap;
-    font-size: 17px;
+    /* font-size: 17px; */
     border-radius: 5px;
 }
 
@@ -218,7 +202,7 @@ hr {
 }
 
 #status {
-    font-size: 0.7em;
+    /* font-size: 0.7em; */
     padding: 4px 12px;
     border-radius: 8px;
     border: 2px solid rgba(0, 0, 0, 0.06);

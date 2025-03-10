@@ -1,0 +1,65 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="base.css">
+    <style>
+        /* 添加卡片样式和居中布局 */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        /* 新增头部样式 */
+        .card-header {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center; /* 水平居中 */
+            margin-bottom: 20px;
+        }
+        .card-header img {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+        }
+        .card-header span {
+            /* 删除:margin-top: 10px; */ /* 移除多余的上边距 */
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- 将表单包裹在卡片容器中 -->
+    <div class="login-container">
+        <div class="card">
+            <!-- 新增头部内容 -->
+            <div class="card-header">
+                <img src="bloret.ico" alt="Bloret Icon">
+                <span>Bloret</span>
+            </div>
+            <form id="loginForm" action="http://pcfs.top:2/api/login" method="GET">
+                <div class="input-group">
+                    <label for="name">账号:</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">密码:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit">登录</button>
+            </form>
+        </div>
+    </div>
+</body>
+

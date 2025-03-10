@@ -1,0 +1,230 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCFS 图床</title>
+    <link rel="stylesheet" href="bbs/style.css">
+    <link rel="stylesheet" href="bbs/base.css">
+    <style>
+        /* 添加卡片样式和居中布局 */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        /* 新增头部样式 */
+        .card-header {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center; /* 水平居中 */
+            margin-bottom: 20px;
+        }
+        .card-header img {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+        }
+        .card-header span {
+            /* 删除:margin-top: 10px; */ /* 移除多余的上边距 */
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- 将表单包裹在卡片容器中 -->
+    <div class="login-container">
+        <div class="card">
+            <!-- 新增头部内容 -->
+            <div class="card-header">
+                <img src="/PCFS.jpg" alt="PCFS Icon">
+                <span>PCFS</span>
+            </div>
+            <form id="uploadForm" action="/api/imgupload" method="POST" enctype="multipart/form-data">
+                <div class="input-group">
+                    <!-- <label for="fileInput">拖拽文件到此处或点击选择文件:</label> -->
+                    <input type="file" id="fileInput" name="files" multiple required accept="image/*" style="display: none;">
+                    <div id="dropZone" style="border: 2px dashed #ccc; padding: 20px; text-align: center; cursor: pointer;">
+                        拖拽文件到此处或点击选择文件
+                    </div>
+                    <ul id="fileList" style="margin-top: 10px;"></ul>
+                </div>
+                <script>
+                    const dropZone = document.getElementById('dropZone');
+                    const fileInput = document.getElementById('fileInput');
+                    const fileList = document.getElementById('fileList');
+
+                    dropZone.addEventListener('click', () => fileInput.click());
+
+                    dropZone.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        dropZone.style.borderColor = '#000';
+                    });
+
+                    dropZone.addEventListener('dragleave', () => {
+                        dropZone.style.borderColor = '#ccc';
+                    });
+
+                    dropZone.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        dropZone.style.borderColor = '#ccc';
+                        fileInput.files = e.dataTransfer.files;
+                        updateFileList();
+                    });
+
+                    fileInput.addEventListener('change', updateFileList);
+
+                    function updateFileList() {
+                        fileList.innerHTML = '';
+                        let totalSize = 0;
+                        Array.from(fileInput.files).forEach((file, index) => {
+                            const li = document.createElement('li');
+
+                            // 创建图片缩略图
+                            const img = document.createElement('img');
+                            img.src = URL.createObjectURL(file);
+                            img.style.width = '30px';
+                            img.style.height = '30px';
+                            img.style.marginRight = '10px';
+                            li.appendChild(img);
+
+                            // 计算文件MD5
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                const md5 = CryptoJS.MD5(CryptoJS.enc.Latin1.parse(e.target.result)).toString();
+                                const fileExtension = file.name.split('.').pop();
+
+                                // 新增文本显示
+                                const fileText = document.createElement('span');
+                                fileText.innerHTML = `<span style="color: gray;">${file.name} → </span>${md5}.${fileExtension}<br>上传完成后图片地址为：<a href="http://pcfs.top:2/img/${md5}.${fileExtension}" target="_blank">http://pcfs.top:2/img/${md5}.${fileExtension}</a>`;
+                                li.appendChild(fileText); // 移动到进度条上方
+
+                                // 创建复制按钮
+                                const copyButton = document.createElement('button');
+                                copyButton.textContent = '复制到剪贴板';
+                                copyButton.style.marginLeft = '10px';
+                                copyButton.addEventListener('click', () => {
+                                    const tempInput = document.createElement('input');
+                                    document.body.appendChild(tempInput);
+                                    tempInput.value = `http://pcfs.top:2/img/${md5}.${fileExtension}`;
+                                    tempInput.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(tempInput);
+                                    // alert('地址已复制到剪贴板');
+                                });
+                                li.appendChild(copyButton); // 添加复制按钮
+
+                                // 创建删除按钮
+                                const deleteButton = document.createElement('button');
+                                deleteButton.textContent = '删除';
+                                deleteButton.style.marginLeft = '10px';
+                                deleteButton.addEventListener('click', () => {
+                                    // 删除文件
+                                    const dt = new DataTransfer();
+                                    Array.from(fileInput.files).forEach((f, i) => {
+                                        if (i !== index) {
+                                            dt.items.add(f);
+                                        }
+                                    });
+                                    fileInput.files = dt.files;
+                                    updateFileList();
+                                });
+                                li.appendChild(deleteButton); // 移动到进度条上方
+
+                                // 创建进度条
+                                const progressBar = document.createElement('progress');
+                                progressBar.id = `progress-${index}`;
+                                progressBar.value = 0;
+                                progressBar.max = 100;
+                                progressBar.style.width = '100%';
+                                progressBar.style.marginTop = '5px';
+                                li.appendChild(progressBar);
+
+                                fileList.appendChild(li);
+                            };
+                            reader.readAsBinaryString(file);
+
+                            totalSize += file.size;
+                        });
+
+                        // 计算文件数量和总大小
+                        const fileCount = fileInput.files.length;
+                        const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+
+                        // 创建文件数量和大小的显示元素
+                        const fileInfo = document.createElement('div');
+                        fileInfo.textContent = `文件数量: ${fileCount}, 总大小: ${sizeInMB} MB`;
+                        fileInfo.style.marginTop = '10px';
+                        fileList.appendChild(fileInfo);
+                    }
+
+                    // 添加上传事件监听器
+                    document.getElementById('uploadForm').addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const formData = new FormData(fileInput.form);
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('POST', '/api/imgupload', true);
+
+                        xhr.upload.addEventListener('progress', (event) => {
+                            if (event.lengthComputable) {
+                                const percentComplete = (event.loaded / event.total) * 100;
+                                Array.from(fileInput.files).forEach((file, index) => {
+                                    const progressBar = document.getElementById(`progress-${index}`);
+                                    if (progressBar) {
+                                        progressBar.value = percentComplete;
+                                    }
+                                });
+                            }
+                        });
+
+                        xhr.onload = () => {
+                            if (xhr.status !== 200) {
+                                alert('文件上传失败 ×');
+                            }
+                        };
+
+                        xhr.send(formData);
+                    });
+                </script>
+                <button type="submit">上传</button>
+            </form>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,12 +1,15 @@
 {
     "port":2,
-    "loadtime":300,
+    "loadtime":600,
     "key":"",
     "webhook":{
         "feishu-message":""
     },
     "go":{
         "sleepy":"http://pcfs.top:4",
-        "bloret":"http://wiki.bloret.net"
-    }
+        "bloret":"http://wiki.bloret.net",
+        "PCFSqq":"https://qm.qq.com/q/jEjrx1kr9S"
+    },
+    "Bloret-Launcher-latest":4.2,
+    "Bloret-Launcher-update-text":"Fabric 下载！"
 }

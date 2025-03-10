@@ -1,0 +1,213 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布帖子 - Bloret</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="base.css">
+    <style>
+        /* 添加卡片样式和居中布局 */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        /* 新增头部样式 */
+        .card-header {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center; /* 水平居中 */
+            margin-bottom: 20px;
+        }
+        .card-header img {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+        }
+        .card-header span {
+            /* 删除:margin-top: 10px; */ /* 移除多余的上边距 */
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .input-group {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 将表单包裹在卡片容器中 -->
+    <div class="login-container">
+        <div class="card">
+            <div class="card-header">
+                <img src="bloret.ico" alt="Bloret Icon">
+                <span>Bloret : 发布帖子</span>
+            </div>
+            <form id="newForm" action="/submit" method="POST">
+                <!-- 标题输入框 -->
+                <div class="input-group">
+                    <label for="title">标题:</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+                <!-- 板块选择框 -->
+                <div class="input-group">
+                    <label for="part">板块:</label>
+                    <select id="part" name="part" required>
+                        <option value="">请选择板块</option>
+                    </select>
+                </div>
+                <!-- 标签选择框 -->
+                <div class="input-group">
+                    <label for="tag">标签:</label>
+                    <select id="tag" name="tag" multiple> <!-- 添加 multiple 属性并移除 required -->
+                        <!-- 动态生成标签选项 -->
+                        <option value="">请选择标签</option>
+                    </select>
+                </div>
+                <!-- 内容输入框 -->
+                <div class="input-group">
+                    <label for="content">内容:</label>
+                    <textarea id="content" name="content" rows="5" required></textarea>
+                </div>
+                <!-- 新增显示当前时间和时间戳的元素 -->
+                <div class="input-group">
+                    <label for="timestamp">当前时间:</label>
+                    <span id="current-time"></span>
+                    <label for="timestamp">(</label>
+                    <span id="timestamp"></span>
+                    <label for="timestamp">)</label>
+                </div>
+                <!-- 按钮组 -->
+                <div class="button-group">
+                    <button type="submit">发送</button>
+                    <button type="button" onclick="cancelForm()">取消</button>
+                </div>
+            </form>
+<script>
+    // 动态加载板块选择框内容
+    fetch('/api/part')
+        .then(response => response.json())
+        .then(data => {
+            const partSelect = document.getElementById('part');
+            for (const key in data) {
+                if (key === "") {
+                    continue;
+                }
+                if (data.hasOwnProperty(key)) {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = key;
+                    partSelect.appendChild(option);
+                }
+            }
+        })
+        .catch(error => console.error('Error loading part options:', error));
+
+    // 动态加载标签选择框内容
+    fetch('/api/bbs/type.json')
+        .then(response => response.json())
+        .then(data => {
+            const tagSelect = document.getElementById('tag');
+            for (const key in data) {
+                if (data.hasOwnProperty(key)) {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = data[key].name; // 使用 name 字段作为显示文本
+                    tagSelect.appendChild(option);
+                }
+            }
+        })
+        .catch(error => console.error('Error loading tag options:', error));
+
+    document.addEventListener('DOMContentLoaded', function() {
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString();
+            document.getElementById('timestamp').textContent = now.getTime();
+        }
+        updateTime(); // 初始化显示时间
+        setInterval(updateTime, 1000); // 每秒更新一次时间
+    });
+
+    document.getElementById('newForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // 阻止默认提交行为
+
+        // 获取表单数据
+        const title = document.getElementById('title').value;
+        const part = document.getElementById('part').value;
+        const tagSelect = document.getElementById('tag');
+        const tag = Array.from(tagSelect.selectedOptions).map(option => option.value);
+        const content = document.getElementById('content').value;
+        const timestamp = new Date().getTime(); // 获取当前时间戳
+
+        // 新增板块校验逻辑
+        if (part === "") {
+            alert('此板块不能选择');
+            return;
+        }
+
+        // 确保所有字段已填写（标签可以为空）
+        if (!title || !content) {
+            alert('请填写标题和内容');
+            return;
+        }
+
+        // 标签校验逻辑
+        if (tagSelect.multiple) { // 判断是否为多选模式
+            if (tag.includes("")) { // 如果多选中包含“请选择标签”
+                alert('多选模式下不能选择“请选择标签”');
+                return;
+            }
+        } else { // 单选模式下，过滤掉“请选择标签”
+            if (tag.length === 1 && tag[0] === "") {
+                tag.splice(0, 1); // 移除“请选择标签”
+            }
+        }
+
+        // 构造POST请求数据
+        const postData = {
+            title: title,
+            part: part,
+            type: tag, // 直接使用标签数组
+            text: content,
+            time: timestamp // 添加时间戳数据
+        };
+
+        // 发送POST请求
+        fetch('/api/bbs/sendpost', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(postData)
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('帖子发布成功');
+                // 可选：清空表单
+                document.getElementById('newForm').reset();
+            } else {
+                throw new Error('服务器返回错误');
+            }
+        })
+        .catch(error => {
+            console.error('Error sending post:', error);
+            alert('帖子发布失败，请稍后重试');
+        });
+    });
+</script>
+
+
+
+
+
+
+

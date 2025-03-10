@@ -1,0 +1,17 @@
+{
+    "不如原神": {
+        "name": "不如原神",
+        "description": "不如原神",
+        "color": "#000000"
+    },
+    "官方": {
+        "name": "官方",
+        "description": "官方",
+        "color": "#00C5CD"
+    },
+    "原神": {
+        "name": "原神",
+        "description": "原神",
+        "color": "#FF0000"
+    }
+}

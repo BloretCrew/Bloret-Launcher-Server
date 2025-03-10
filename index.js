@@ -4,6 +4,11 @@ const path = require('path');
 const useragent = require('useragent');
 const ini = require('ini');
 const axios = require('axios');
+const multer = require('multer');
+const crypto = require('crypto');
+const nsfwjs = require('nsfwjs'); // 引入 nsfwjs 库
+const { createCanvas, loadImage } = require('canvas'); // 新增: 引入 canvas 库
+
 const app = express();
 
 // 添加 express.json() 中间件来解析 JSON 格式的请求体
@@ -42,6 +47,10 @@ let counter = 0;
 // 读取 key 和 webhook.feishu-message
 let key = configJson.key;
 let webhookFeishu = configJson.webhook['feishu-message'];
+
+// 读取 Bloret-Launcher-latest 的值
+let bloretLauncherLatest = configJson['Bloret-Launcher-latest'];
+let bloretLauncherUpdateText = configJson['Bloret-Launcher-update-text'];
 
 // 读取 data.ini 中的 user 值
 function readUserFromConfig() {
@@ -114,11 +123,28 @@ app.get('/bbs/bloret.ico', (req, res) => {
 app.get('/bbs/reg', (req, res) => {
     res.sendFile(path.join(__dirname, 'bbs', 'reg.html'));
 });
+app.get('/bbs/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'bbs', 'login.html'));
+});
+app.get('/bbs/new', (req, res) => {
+    res.sendFile(path.join(__dirname, 'bbs', 'new.html'));
+});
 
-app.use('/zipdownload', express.static(path.join(__dirname, 'zipdownload')));
+app.get('/api/bbs/type.json', (req, res) => {
+    const typeFilePath = path.join(__dirname, 'bbs', 'type.json');
+    try {
+        const typeData = JSON.parse(fs.readFileSync(typeFilePath, 'utf-8'));
+        res.json(typeData);
+    } catch (error) {
+        console.error('读取 type.json 文件失败:', error);
+        res.status(500).send('读取 type.json 文件失败');
+    }
+});
 
-app.get('/zipdownload', (req, res) => {
-    const zipDir = path.join(__dirname, 'zipdownload');
+app.use('/download', express.static(path.join(__dirname, 'download')));
+
+app.get('/download', (req, res) => {
+    const zipDir = path.join(__dirname, 'download');
     fs.readdir(zipDir, (err, files) => {
         if (err) {
             return res.status(500).send('无法读取文件列表');
@@ -128,7 +154,7 @@ app.get('/zipdownload', (req, res) => {
         fileListHtml += '<h1>文件列表</h1><ul>';
 
         files.forEach(file => {
-            fileListHtml += `<li><a href="/zipdownload/${file}">${file}</a></li>`;
+            fileListHtml += `<li><a href="/download/${file}">${file}</a></li>`;
         });
 
         fileListHtml += '</ul></body></html>';
@@ -174,6 +200,7 @@ setInterval(() => {
     port = configJson.port ? parseInt(configJson.port, 10) : 2;
     console.log(`从 config.json 中读取的端口值为：${port}`);
     outputgoConfig();
+    bloretLauncherLatest = configJson['Bloret-Launcher-latest']; // 更新 Bloret-Launcher-latest 的值
     lastRefreshTime = Date.now();
 }, refreshInterval);
 
@@ -330,3 +357,176 @@ async function getIpLocation(ip) {
         return "未知";
     }
 }
+
+// 新增 /api/BLlatest 路由处理返回 Bloret-Launcher-latest 的值
+app.get('/api/BLlatest', (req, res) => {
+    res.json({'Bloret-Launcher-latest': parseFloat(bloretLauncherLatest),'text': bloretLauncherUpdateText});
+});
+// 开放 /bbs/icon 下的所有内容
+app.use('/bbs/icon', express.static(path.join(__dirname, 'bbs', 'icon')));
+
+// 新增 /api/bbs/sendpost 路由处理发送帖子
+app.post('/api/bbs/sendpost', (req, res) => {
+    const { title, text, part, type, time } = req.body;
+
+    // 验证参数是否完整
+    if (!title || !text || !part || !type || !time) {
+        return res.status(400).json({ status: 'error', message: '缺少必要的参数' });
+    }
+
+    const partFilePath = path.join(__dirname, 'bbs', 'part.json');
+    let partData;
+
+    try {
+        partData = JSON.parse(fs.readFileSync(partFilePath, 'utf-8'));
+    } catch (error) {
+        console.error('读取 part.json 文件失败:', error);
+        return res.status(500).json({ status: 'error', message: '读取 part.json 文件失败' });
+    }
+
+    // 检查 part 是否存在
+    if (!partData[part]) {
+        return res.status(404).json({ status: 'error', message: `未找到 ${part}` });
+    }
+
+    // 添加新的帖子
+    partData[part].push({
+        title: title,
+        text: text,
+        type: type,
+        time: time
+    });
+
+    try {
+        fs.writeFileSync(partFilePath, JSON.stringify(partData, null, 2), 'utf-8');
+    } catch (error) {
+        console.error('写入 part.json 文件失败:', error);
+        return res.status(500).json({ status: 'error', message: '写入 part.json 文件失败' });
+    }
+
+    console.log(`新帖子已添加到 ${part}: 标题: ${title}, 内容: ${text}, 类型: ${type}, 时间：${time}`);
+    res.json({ status: 'success', message: '帖子已成功发送' });
+});
+
+// 设置 /img 路由处理静态文件
+app.use('/img', express.static(path.join(__dirname, 'img')));
+
+// 设置 /image 路由处理 img.html 文件
+app.get('/image', (req, res) => {
+    res.sendFile(path.join(__dirname, 'img.html'));
+});
+// 设置 multer 存储引擎
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, 'temp')); // 先存放在临时文件夹
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
+});
+
+// 文件过滤器，校验是否为图片文件
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (extname && mimetype) {
+        return cb(null, true);
+    } else {
+        cb(new Error('仅支持上传图片文件'));
+    }
+};
+
+// 修改：使用 array() 方法处理多文件上传，对应 input 的 name "files"
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter
+}).array('files');
+
+// 新增: 加载 nsfwjs 模型
+let model;
+nsfwjs.load().then((loadedModel) => {
+    model = loadedModel;
+});
+
+// 更新: 检测图片是否为成人内容的函数，添加调试日志及更多成人类别和更低的阈值
+async function isImageAdult(imagePath) {
+    try {
+        const image = await loadCustomImage(imagePath);
+        if (!model) {
+            throw new Error("NSFWJS 模型未加载");
+        }
+        const predictions = await model.classify(image);
+        console.log("图片审核预测结果:", predictions);
+        // 设定需要拦截的成人类别
+        const adultClasses = ['Porn', 'Hentai', 'Sexy'];
+        const adultPrediction = predictions.find(p => adultClasses.includes(p.className));
+        // 可根据实际情况进一步调整阈值，此处设为 0.3
+        return adultPrediction && adultPrediction.probability > 0.3;
+    } catch (error) {
+        console.error("图片审核失败:", error);
+        throw error;
+    }
+}
+
+// 修改: 加载图片辅助函数：返回 canvas 而非直接返回 Image 对象
+async function loadCustomImage(filePath) {
+    try {
+        const image = await loadImage(filePath);
+        const canvas = createCanvas(image.width, image.height);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0);
+        return canvas;
+    } catch (error) {
+        throw new Error(`无法加载图片: ${filePath}`);
+    }
+}
+
+// 新增 /api/imgupload 路由处理图片上传
+app.post('/api/imgupload', (req, res) => {
+    upload(req, res, async function (err) {
+        if (err) {
+            console.error('文件上传失败:', err);
+            return res.status(400).json({ status: 'error', message: err.message });
+        }
+
+        const ipAddress = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress;
+
+        for (const file of req.files) {
+            try {
+                // 新增: 检测图片是否为成人内容
+                const isAdult = await isImageAdult(file.path);
+                if (isAdult) {
+                    console.log('\x1b[31m%s\x1b[0m', `检测到成人内容，上传者IP: ${ipAddress}`);
+                }
+
+                const hash = crypto.createHash('md5').update(fs.readFileSync(file.path)).digest('hex');
+                const newFilename = `${hash}${path.extname(file.originalname)}`;
+                const newDir = isAdult ? 'warnimg' : 'img';
+                const newPath = path.join(__dirname, newDir, newFilename);
+
+                if (isAdult) {
+                    fs.appendFileSync(path.join(__dirname, 'warnlog.txt'), `${ipAddress} - ${newFilename}\n`);
+                }
+
+                fs.renameSync(file.path, newPath);
+                file.filename = newFilename;
+                file.path = newPath;
+            } catch (error) {
+                console.error('图片审核失败:', error);
+                fs.unlinkSync(file.path); // 删除临时文件
+                return res.status(500).json({ status: 'error', message: '图片审核失败' });
+            }
+        }
+
+        const uploadedFiles = req.files.map(file => file.filename);
+        console.log('文件上传成功:', uploadedFiles);
+        res.json({ status: 'success', message: '文件上传成功', filenames: uploadedFiles });
+    });
+});
+
+// 开放 bbs/style.css 和 bbs/base.css
+app.use('/bbs/style.css', express.static(path.join(__dirname, 'bbs', 'style.css')));
+app.use('/bbs/base.css', express.static(path.join(__dirname, 'bbs', 'base.css')));
+app.use('/PCFS.jpg', express.static(path.join(__dirname, 'PCFS.jpg')));

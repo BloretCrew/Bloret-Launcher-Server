@@ -13,8 +13,9 @@
             display: flex;
         }
         .sidebar {
-            width: 200px;
-            background-color: #f4f4f4;
+            width: 10ch; /* 修改：设置侧边栏宽度至少为7个字符 */
+            min-width: 10ch; /* 新增：确保最小宽度为7个字符 */
+            background-color: #e0dfdf;
             padding: 20px;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
         }
@@ -35,12 +36,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #333;
+            background-color: #80808033;
             color: white;
             padding: 10px 20px;
         }
         .navbar a {
-            color: white;
+            color: black; /* 修改：将文本颜色从白色改为黑色 */
             text-decoration: none;
             margin: 0 10px;
         }
@@ -65,12 +66,27 @@
             margin-bottom: 10px;
             text-align: left;
             font-weight: normal;
+            display: flex; /* 新增：使标题和标签在同一行 */
+            align-items: center; /* 新增：垂直居中对齐 */
+            gap: 10px; /* 新增：控制标题与标签之间的间距 */
+        }
+        .post-tags {
+            color: #666;
+            padding: 5px 10px; /* 新增：增加内边距 */
+            background-color: #f0f0f0; /* 新增：背景色 */
+            border-radius: 20px; /* 新增：圆框效果 */
+            font-size: 0.9em; /* 新增：调整字体大小 */
         }
         .post-content {
             margin-bottom: 10px;
         }
-        .post-tags {
-            color: #666;
+        .post-content-truncated {
+            display: -webkit-box;
+            -webkit-line-clamp: 5; /* 限制显示五行 */
+            line-clamp: 5; /* 标准属性 */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .section {
             margin-bottom: 20px;
@@ -113,6 +129,15 @@
         .sidebar-links li {
             margin-left: 20px; /* 增加缩进 */
         }
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -133,12 +158,16 @@
     <div class="main-content">
         <div class="navbar">
             <div style="display: flex; align-items: center;">
+                <!-- 新增：收起/展开侧边栏按钮 -->
+                <button id="toggle-sidebar" onclick="toggleSidebar()" style="background: none; border: none; cursor: pointer; margin-right: 10px;">
+                    <img src="bbs/icon/square.righthalf.fill.svg" alt="Toggle Sidebar" style="width: 24px; height: 24px;">
+                </button>
                 <img src="/bbs/bloret.ico" alt="Bloret">
                 <a href="/bbs" style="margin-left: 10px;">Bloret</a>
             </div>
             <div>
                 <a href="/bbs/login">登录</a>
-                <a href="/bbs/register">注册</a>
+                <a href="/bbs/reg" id="register-link">注册</a> <!-- 修改：添加 id 以便绑定事件 -->
             </div>
         </div>
         <div id="sections" class="container"></div>
@@ -148,79 +177,362 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <script>
+        // 新增：将 tagColors 定义为全局变量
+        let tagColors = {};
+
         document.addEventListener('DOMContentLoaded', () => {
-            fetch('/api/part')
+            // 新增：加载 type.json 文件
+            fetch('/api/bbs/type.json')
                 .then(response => response.json())
-                .then(data => {
-                    const sectionsContainer = document.getElementById('sections');
-                    const sidebarLinks = document.getElementById('sidebar-links');
-                    const sidebarTags = document.getElementById('sidebar-tags');
-
-                    for (const section in data) {
-                        if (data.hasOwnProperty(section)) {
-                            // 创建侧边栏链接
-                            const linkElement = document.createElement('li');
-                            const anchorElement = document.createElement('a');
-                            anchorElement.href = `#${section}`;
-                            anchorElement.textContent = section;
-                            linkElement.appendChild(anchorElement);
-                            sidebarLinks.appendChild(linkElement);
-
-                            // 创建标签
-                            data[section].forEach(post => {
-                                post.type.forEach(tag => {
-                                    const tagElement = document.createElement('li');
-                                    const tagAnchorElement = document.createElement('a');
-                                    tagAnchorElement.href = `#tag-${tag}`;
-                                    tagAnchorElement.textContent = tag;
-                                    tagElement.appendChild(tagAnchorElement);
-                                    sidebarTags.appendChild(tagElement);
-                                });
-                            });
-
-                            // 创建内容部分
-                            const sectionElement = document.createElement('div');
-                            sectionElement.className = 'section';
-                            sectionElement.id = section;
-
-                            const sectionTitleElement = document.createElement('div');
-                            sectionTitleElement.className = 'section-title';
-                            sectionTitleElement.textContent = section;
-
-                            const postsContainer = document.createElement('div');
-
-                            data[section].forEach(post => {
-                                const postElement = document.createElement('div');
-                                postElement.className = 'post';
-
-                                const titleElement = document.createElement('div');
-                                titleElement.className = 'post-title';
-                                titleElement.textContent = post.title;
-
-                                const contentElement = document.createElement('div');
-                                contentElement.className = 'post-content';
-                                // 使用 marked 解析 Markdown 内容
-                                contentElement.innerHTML = marked.parse(post.text);
-
-                                const tagsElement = document.createElement('div');
-                                tagsElement.className = 'post-tags';
-                                tagsElement.textContent = `标签: ${post.type.join(', ')}`;
-
-                                postElement.appendChild(titleElement);
-                                postElement.appendChild(contentElement);
-                                postElement.appendChild(tagsElement);
-
-                                postsContainer.appendChild(postElement);
-
-                            });
-
-                            sectionElement.appendChild(sectionTitleElement);
-                            sectionElement.appendChild(postsContainer);
-                            sectionsContainer.appendChild(sectionElement);
-                        }
+                .then(typeData => {
+                    // 将 type.json 转换为以标签名为键的对象，方便快速查找
+                    for (const tag in typeData) {
+                        tagColors[tag] = typeData[tag].color;
                     }
-                })
-                .catch(error => console.error('Error fetching posts:', error));
+
+                    // 加载板块数据
+                    return fetch('/api/part')
+                        .then(response => response.json())
+                        .then(data => {
+                            const sectionsContainer = document.getElementById('sections');
+                            const sidebarLinks = document.getElementById('sidebar-links');
+                            const sidebarTags = document.getElementById('sidebar-tags');
+                            const sectionOrder = Object.keys(data); // 保持 part.json 中的顺序
+                            sectionOrder.forEach(section => {
+                                if (section.trim() === '') return; // 修改：仅在 section 为空字符串时跳过
+
+                                // 创建侧边栏链接
+                                const linkElement = document.createElement('li');
+                                const anchorElement = document.createElement('a');
+                                anchorElement.href = `#${section}`;
+                                anchorElement.textContent = section;
+                                linkElement.appendChild(anchorElement);
+                                sidebarLinks.appendChild(linkElement);
+
+                                // 创建标签
+                                data[section].forEach(post => {
+                                    post.type.forEach(tag => {
+                                        const tagElement = document.createElement('li');
+                                        const tagAnchorElement = document.createElement('a');
+                                        tagAnchorElement.href = `#tag-${tag}`;
+                                        tagAnchorElement.textContent = tag;
+
+                                        // 设置标签背景色
+                                        if (tagColors[tag]) {
+                                            tagAnchorElement.style.backgroundColor = `${tagColors[tag]}80`; // 修改：添加透明度（50%）
+                                            tagAnchorElement.style.color = '#fff'; // 确保文字可见
+                                            tagAnchorElement.style.padding = '5px 10px';
+                                            tagAnchorElement.style.borderRadius = '20px';
+                                        }
+
+                                        tagElement.appendChild(tagAnchorElement);
+                                        sidebarTags.appendChild(tagElement);
+                                    });
+                                });
+
+                                // 创建内容部分
+                                const sectionElement = document.createElement('div');
+                                sectionElement.className = 'section';
+                                sectionElement.id = section;
+
+                                const sectionTitleElement = document.createElement('div');
+                                sectionTitleElement.className = 'section-title';
+                                sectionTitleElement.textContent = section;
+
+                                const postsContainer = document.createElement('div');
+                                const postsArr = data[section];
+                                if (postsArr.length > 3) {
+                                    // 修改：对帖子数组按 time 值降序排序
+                                    postsArr.sort((a, b) => b.time - a.time);
+
+                                    // 取超过三篇的帖子放在 extraContainer，显示最新三篇帖子
+                                    const extraPosts = postsArr.slice(0, postsArr.length - 3);
+                                    const visiblePosts = postsArr.slice(postsArr.length - 3);
+                                    visiblePosts.forEach(post => {
+                                        const postElement = document.createElement('div');
+                                        postElement.className = 'post';
+
+                                        const titleElement = document.createElement('div');
+                                        titleElement.className = 'post-title';
+                                        titleElement.textContent = post.title;
+
+                                        const tagsContainer = document.createElement('div');
+                                        tagsContainer.style.display = 'flex';
+                                        tagsContainer.style.gap = '5px';
+
+                                        if (post.type.length > 0) {
+                                            post.type.forEach(tag => {
+                                                const tagElement = document.createElement('div');
+                                                tagElement.className = 'post-tags';
+
+                                                // 设置标签背景色
+                                                if (tagColors[tag]) {
+                                                    tagElement.style.backgroundColor = `${tagColors[tag]}80`; // 修改：添加透明度（50%）
+                                                    tagElement.style.color = '#fff'; // 确保文字可见
+                                                }
+
+                                                tagElement.textContent = tag;
+                                                tagsContainer.appendChild(tagElement);
+                                            });
+                                        } else {
+                                            tagsContainer.style.display = 'none';
+                                        }
+
+                                        titleElement.appendChild(tagsContainer);
+
+                                        // 新增：将时间戳转换为年月日时间制，并显示时分
+                                        const timeElement = document.createElement('div');
+                                        timeElement.style.color = '#888'; // 灰色字体
+                                        timeElement.style.fontSize = '0.9em';
+                                        const date = new Date(post.time);
+                                        timeElement.textContent = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}`; // 去掉秒
+                                        titleElement.appendChild(timeElement);
+
+                                        const expandButton = document.createElement('button');
+                                        expandButton.className = 'expand-button';
+                                        const icon = document.createElement('img');
+                                        icon.src = 'bbs/icon/viewfinder.svg';
+                                        icon.alt = 'Expand';
+                                        icon.style.width = '16px';
+                                        icon.style.height = '16px';
+                                        expandButton.appendChild(icon);
+                                        expandButton.onclick = () => showPostModal(post.title, post.text, post.type);
+
+                                        titleElement.appendChild(expandButton);
+
+                                        const contentElement = document.createElement('div');
+                                        contentElement.className = 'post-content post-content-truncated';
+                                        contentElement.innerHTML = marked.parse(post.text);
+
+                                        // 新增：创建“展开全部”按钮
+                                        const expandAllButton = document.createElement('button');
+                                        expandAllButton.textContent = '展开全部';
+                                        expandAllButton.style.display = 'none'; // 默认隐藏
+                                        expandAllButton.onclick = () => {
+                                            expandAllButton.textContent = '展开全部';
+                                            showPostModal(post.title, post.text, post.type); // 弹出窗口显示完整内容
+                                        };
+
+                                        // 新增：检查内容是否超过五行
+                                        const observer = new IntersectionObserver((entries) => {
+                                            entries.forEach(entry => {
+                                                if (entry.target.scrollHeight > entry.target.clientHeight) {
+                                                    expandAllButton.style.display = 'block'; // 显示按钮
+                                                }
+                                            });
+                                        }, { threshold: 1.0 });
+
+                                        observer.observe(contentElement);
+
+                                        postElement.appendChild(titleElement);
+                                        postElement.appendChild(contentElement);
+                                        postElement.appendChild(expandAllButton); // 添加按钮到帖子中
+                                        postsContainer.appendChild(postElement);
+                                    });
+                                    const extraContainer = document.createElement('div');
+                                    extraContainer.style.display = 'none';
+                                    extraPosts.forEach(post => {
+                                        const postElement = document.createElement('div');
+                                        postElement.className = 'post';
+
+                                        const titleElement = document.createElement('div');
+                                        titleElement.className = 'post-title';
+                                        titleElement.textContent = post.title;
+
+                                        const tagsContainer = document.createElement('div');
+                                        tagsContainer.style.display = 'flex';
+                                        tagsContainer.style.gap = '5px';
+
+                                        if (post.type.length > 0) {
+                                            post.type.forEach(tag => {
+                                                const tagElement = document.createElement('div');
+                                                tagElement.className = 'post-tags';
+
+                                                // 设置标签背景色
+                                                if (tagColors[tag]) {
+                                                    tagElement.style.backgroundColor = `${tagColors[tag]}80`; // 修改：添加透明度（50%）
+                                                    tagElement.style.color = '#fff'; // 确保文字可见
+                                                }
+
+                                                tagElement.textContent = tag;
+                                                tagsContainer.appendChild(tagElement);
+                                            });
+                                        } else {
+                                            tagsContainer.style.display = 'none';
+                                        }
+
+                                        titleElement.appendChild(tagsContainer);
+
+                                        // 新增：将时间戳转换为年月日时间制，并显示时分
+                                        const timeElement = document.createElement('div');
+                                        timeElement.style.color = '#888'; // 灰色字体
+                                        timeElement.style.fontSize = '0.9em';
+                                        const date = new Date(post.time);
+                                        timeElement.textContent = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}`; // 去掉秒
+                                        titleElement.appendChild(timeElement);
+
+                                        const expandButton = document.createElement('button');
+                                        expandButton.className = 'expand-button';
+                                        const icon = document.createElement('img');
+                                        icon.src = 'bbs/icon/viewfinder.svg';
+                                        icon.alt = 'Expand';
+                                        icon.style.width = '16px';
+                                        icon.style.height = '16px';
+                                        expandButton.appendChild(icon);
+                                        expandButton.onclick = () => showPostModal(post.title, post.text, post.type);
+
+                                        titleElement.appendChild(expandButton);
+
+                                        const contentElement = document.createElement('div');
+                                        contentElement.className = 'post-content post-content-truncated';
+                                        contentElement.innerHTML = marked.parse(post.text);
+
+                                        // 新增：创建“展开全部”按钮
+                                        const expandAllButton = document.createElement('button');
+                                        expandAllButton.textContent = '展开全部';
+                                        expandAllButton.style.display = 'none'; // 默认隐藏
+                                        expandAllButton.onclick = () => {
+                                            // expandAllButton.style.display = 'none'; // 隐藏按钮
+                                            showPostModal(post.title, post.text, post.type); // 弹出窗口显示完整内容
+                                        };
+
+                                        // 新增：检查内容是否超过五行
+                                        const observer = new IntersectionObserver((entries) => {
+                                            entries.forEach(entry => {
+                                                if (entry.target.scrollHeight > entry.target.clientHeight) {
+                                                    expandAllButton.style.display = 'block'; // 显示按钮
+                                                }
+                                            });
+                                        }, { threshold: 1.0 });
+
+                                        observer.observe(contentElement);
+
+                                        postElement.appendChild(titleElement);
+                                        postElement.appendChild(contentElement);
+                                        postElement.appendChild(expandAllButton); // 添加按钮到帖子中
+                                        extraContainer.appendChild(postElement);
+                                    });
+                                    postsContainer.appendChild(extraContainer);
+                                    const toggleCard = document.createElement('div');
+                                    toggleCard.textContent = `显示 ${section} 下的其他 ${extraPosts.length} 篇内容`;
+                                    toggleCard.style.cursor = 'pointer';
+                                    toggleCard.style.padding = '10px';
+                                    toggleCard.style.margin = '10px';
+                                    toggleCard.style.border = '1px solid #ccc';
+                                    toggleCard.style.borderRadius = '5px';
+                                    toggleCard.style.backgroundColor = '#f4f4f4';
+                                    toggleCard.onclick = () => {
+                                        if (extraContainer.style.display === 'none') {
+                                            extraContainer.style.display = 'block';
+                                            toggleCard.textContent = '收起';
+                                        } else {
+                                            extraContainer.style.display = 'none';
+                                            toggleCard.textContent = `显示更多帖子 (${extraPosts.length})`;
+                                        }
+                                    };
+                                    postsContainer.appendChild(toggleCard);
+                                } else {
+                                    // 修改：对帖子数组按 time 值降序排序
+                                    postsArr.sort((a, b) => b.time - a.time);
+
+                                    postsArr.forEach(post => {
+                                        const postElement = document.createElement('div');
+                                        postElement.className = 'post';
+
+                                        const titleElement = document.createElement('div');
+                                        titleElement.className = 'post-title';
+                                        titleElement.textContent = post.title;
+
+                                        const tagsContainer = document.createElement('div');
+                                        tagsContainer.style.display = 'flex';
+                                        tagsContainer.style.gap = '5px';
+
+                                        if (post.type.length > 0) {
+                                            post.type.forEach(tag => {
+                                                const tagElement = document.createElement('div');
+                                                tagElement.className = 'post-tags';
+
+                                                // 设置标签背景色
+                                                if (tagColors[tag]) {
+                                                    tagElement.style.backgroundColor = `${tagColors[tag]}80`; // 修改：添加透明度（50%）
+                                                    tagElement.style.color = '#fff'; // 确保文字可见
+                                                }
+
+                                                tagElement.textContent = tag;
+                                                tagsContainer.appendChild(tagElement);
+                                            });
+                                        } else {
+                                            tagsContainer.style.display = 'none';
+                                        }
+
+                                        titleElement.appendChild(tagsContainer);
+
+                                        // 新增：将时间戳转换为年月日时间制，并显示时分
+                                        const timeElement = document.createElement('div');
+                                        timeElement.style.color = '#888'; // 灰色字体
+                                        timeElement.style.fontSize = '0.9em';
+                                        const date = new Date(post.time);
+                                        timeElement.textContent = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}`; // 去掉秒
+                                        titleElement.appendChild(timeElement);
+
+                                        const expandButton = document.createElement('button');
+                                        expandButton.className = 'expand-button';
+                                        const icon = document.createElement('img');
+                                        icon.src = 'bbs/icon/viewfinder.svg';
+                                        icon.alt = 'Expand';
+                                        icon.style.width = '16px';
+                                        icon.style.height = '16px';
+                                        expandButton.appendChild(icon);
+                                        expandButton.onclick = () => showPostModal(post.title, post.text, post.type);
+
+                                        titleElement.appendChild(expandButton);
+
+                                        const contentElement = document.createElement('div');
+                                        contentElement.className = 'post-content post-content-truncated';
+                                        contentElement.innerHTML = marked.parse(post.text);
+
+                                        // 新增：创建“展开全部”按钮
+                                        const expandAllButton = document.createElement('button');
+                                        expandAllButton.textContent = '展开全部';
+                                        expandAllButton.style.display = 'none'; // 默认隐藏
+                                        expandAllButton.onclick = () => {
+                                            expandAllButton.style.display = 'none'; // 隐藏按钮
+                                            showPostModal(post.title, post.text, post.type); // 弹出窗口显示完整内容
+                                        };
+
+                                        // 新增：检查内容是否超过五行
+                                        const observer = new IntersectionObserver((entries) => {
+                                            entries.forEach(entry => {
+                                                if (entry.target.scrollHeight > entry.target.clientHeight) {
+                                                    expandAllButton.style.display = 'block'; // 显示按钮
+                                                }
+                                            });
+                                        }, { threshold: 1.0 });
+
+                                        observer.observe(contentElement);
+
+                                        postElement.appendChild(titleElement);
+                                        postElement.appendChild(contentElement);
+                                        postElement.appendChild(expandAllButton); // 添加按钮到帖子中
+                                        postsContainer.appendChild(postElement);
+                                    });
+                                }
+
+                                sectionElement.appendChild(sectionTitleElement);
+                                sectionElement.appendChild(postsContainer);
+                                sectionsContainer.appendChild(sectionElement);
+                            });
+                        });
+            })
+            .catch(error => console.error('Error fetching type data:', error));
+
+            // 新增：为“注册”按钮绑定点击事件
+            const registerLink = document.getElementById('register-link');
+            registerLink.addEventListener('click', (event) => {
+                event.preventDefault(); // 阻止默认跳转行为
+                alert('Bloret 网站账号统一至服内，如要注册，请前往 bloret.net 服内进行注册。'); // 显示提示信息
+            });
+
         });
 
         function showContent(contentId) {
@@ -237,6 +549,83 @@
 
             document.getElementById(contentId).classList.add('active');
             document.querySelector(`.sidebar-tab[onclick="showContent('${contentId}')"]`).classList.add('active');
+        }
+
+        // 新增：弹出窗口函数
+        function showPostModal(title, content, tags) {
+            const newTab = window.open('', '_blank'); // 打开新标签页
+            let tagsHtml = '';
+            if (tags.length > 0) {
+                tags.forEach(tag => {
+                    // 动态生成每个标签的 HTML，应用 type.json 中的 color 值
+                    tagsHtml += `<div class="post-tags" style="background-color: ${tagColors[tag]}80; color: #fff;">${tag}</div>`;
+                });
+            } else {
+                tagsHtml = '<div class="post-tags" style="display: none;"></div>';
+            }
+            newTab.document.write(`
+                <html>
+                    <head>
+                        <title>${title} - Bloret</title>
+                        <style>
+                            body {
+                                font-family: Arial, sans-serif;
+                                padding: 20px;
+                                background-color: #f9f9f9;
+                            }
+                            h2 {
+                                margin-bottom: 10px;
+                            }
+                            .post-tags {
+                                color: #666;
+                                padding: 5px 10px;
+                                background-color: #f0f0f0;
+                                border-radius: 20px;
+                                font-size: 0.9em;
+                                display: inline-block;
+                                margin-right: 5px;
+                                margin-bottom: 10px;
+                            }
+                            button {
+                                margin-top: 10px;
+                                padding: 5px 10px;
+                                background-color: #007BFF;
+                                color: white;
+                                border: none;
+                                border-radius: 5px;
+                                cursor: pointer;
+                            }
+                            button:hover {
+                                background-color: #0056b3;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>${title}</h2>
+                        <div>${tagsHtml}</div>
+                        <div>${marked.parse(content)}</div>
+                        <button onclick="window.close()">关闭</button>
+                    </body>
+                </html>
+            `);
+            newTab.document.close();
+        }
+
+        // 新增：切换侧边栏显示/隐藏的函数
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleButton = document.getElementById('toggle-sidebar');
+            const icon = toggleButton.querySelector('img');
+
+            if (sidebar.style.display === 'none' || sidebar.style.display === '') {
+                sidebar.style.display = 'block';
+                // 修改：显示时使用 square.righthalf.fill.svg 图标
+                icon.src = 'bbs/icon/square.righthalf.fill.svg';
+            } else {
+                sidebar.style.display = 'none';
+                // 修改：隐藏时使用 square.svg 图标
+                icon.src = 'bbs/icon/square.svg';
+            }
         }
     </script>
 </body>
